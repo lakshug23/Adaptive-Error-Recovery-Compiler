@@ -36,8 +36,9 @@ const server = http.createServer((req, res) => {
         const payload = JSON.parse(body || '{}');
         const code = payload.code || '';
 
-        // Very small mock logic: simple heuristics to simulate compilation errors
-        const errors = [];
+  // Very small mock logic: simple heuristics to simulate compilation errors
+  const errors = [];
+  const lines = code.split(/\r?\n/);
         // detect use of printf without stdio include
         const hasPrintf = /printf\s*\(/.test(code);
         const hasStdio = /#\s*include\s*<stdio.h>/.test(code);
@@ -52,6 +53,13 @@ const server = http.createServer((req, res) => {
           // only if there's no trailing semicolon
           if (!/;\s*$/.test(lineText)) {
             errors.push({ type: 'SyntaxError', message: 'Missing semicolon after statement' });
+          }
+        }
+
+        // detect duplicate/extra semicolons on any line (e.g. ";;")
+        for (let i = 0; i < lines.length; i++) {
+          if (/;;/.test(lines[i])) {
+            errors.push({ type: 'SyntaxWarning', message: 'Extra semicolon detected', line: i + 1 });
           }
         }
 
@@ -111,6 +119,13 @@ const server = http.createServer((req, res) => {
           const lineText = printfLineMatch[1];
           if (!/;\s*$/.test(lineText)) {
             errors.push({ type: 'SyntaxError', message: 'Missing semicolon after statement' });
+          }
+        }
+        // detect duplicate semicolons
+        const lines = code.split(/\r?\n/);
+        for (let i = 0; i < lines.length; i++) {
+          if (/;;/.test(lines[i])) {
+            errors.push({ type: 'SyntaxWarning', message: 'Extra semicolon detected', line: i + 1 });
           }
         }
         const openBraces = (code.match(/\{/g) || []).length;
@@ -210,6 +225,28 @@ function generateFixes(code, errors) {
           });
           break;
         }
+      }
+    }
+  }
+
+  // handle extra semicolon fixes
+  if (errors.some(e => /extra semicolon|duplicate/i.test(e.message))) {
+    // find first line with ';;' and suggest removing the extra semicolon
+    for (let i = 0; i < lines.length; i++) {
+      if (/;;/.test(lines[i])) {
+        const original = lines[i];
+        const replacement = original.replace(/;;/, ';');
+        fixes.push({
+          description: 'Remove extra semicolon',
+          confidence: 0.9,
+          edit: {
+            type: 'replace',
+            line: i + 1,
+            original: original,
+            replacement: replacement
+          }
+        });
+        break;
       }
     }
   }
