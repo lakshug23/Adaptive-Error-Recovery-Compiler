@@ -19,6 +19,7 @@ function App() {
 
   const [code, setCode] = useState(defaultCode);
   const [result, setResult] = useState<CompileResult | null>(null);
+  const [fixes, setFixes] = useState<any[] | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
@@ -26,9 +27,16 @@ function App() {
   const handleCompile = async () => {
     setIsCompiling(true);
     setError(null);
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+    if (!backendUrl) {
+      setError('Backend URL not configured. Set VITE_BACKEND_URL in a .env file.');
+      setIsCompiling(false);
+      return;
+    }
 
     try {
-      const response = await fetch('http://localhost:8000/compile', {
+      const response = await fetch(`${backendUrl.replace(/\/+$/, '')}/compile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,6 +50,26 @@ function App() {
 
       const data = await response.json();
       setResult(data);
+      // if there are errors, request minimal fixes from backend
+      if (data && data.errors && data.errors.length > 0) {
+        try {
+          const fixResp = await fetch(`${backendUrl.replace(/\/+$/, '')}/fix`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code }),
+          });
+          if (fixResp.ok) {
+            const fixData = await fixResp.json();
+            setFixes(fixData.fixes || null);
+          } else {
+            setFixes(null);
+          }
+        } catch (e) {
+          setFixes(null);
+        }
+      } else {
+        setFixes(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to connect to compiler backend');
       setResult(null);
@@ -56,6 +84,30 @@ function App() {
     setResult(null);
     setError(null);
     setTimeout(() => setIsResetting(false), 300);
+  };
+
+  // Apply a single fix object to the current code. fix.edit has {type,line,content} or replace
+  const applyFix = (fix: any) => {
+    if (!fix || !fix.edit) return;
+    const edit = fix.edit;
+    const lines = code.split(/\r?\n/);
+    const lineIndex = Math.max(0, Math.min(lines.length, (edit.line || 1) - 1));
+
+    if (edit.type === 'insert') {
+      // insert before lineIndex (1-based line number)
+      lines.splice(lineIndex, 0, ...(edit.content || '').split(/\r?\n/));
+    } else if (edit.type === 'replace') {
+      // replace the specific line
+      if (typeof edit.line === 'number') {
+        lines[lineIndex] = edit.replacement !== undefined ? edit.replacement : edit.content || '';
+      }
+    }
+
+    const newCode = lines.join('\n');
+    setCode(newCode);
+    // after applying a fix, clear fixes/result so user can re-run compile
+    setFixes(null);
+    setResult(null);
   };
 
   return (
@@ -122,7 +174,13 @@ function App() {
               )}
             </div>
 
-            <OutputPanel result={result} error={error} isCompiling={isCompiling} />
+            <OutputPanel
+              result={result}
+              error={error}
+              isCompiling={isCompiling}
+              fixes={fixes}
+              onApplyFix={applyFix}
+            />
           </div>
         </div>
       </main>

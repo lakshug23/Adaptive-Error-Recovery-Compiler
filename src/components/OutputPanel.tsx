@@ -23,9 +23,11 @@ interface OutputPanelProps {
   result: CompileResult | null;
   error: string | null;
   isCompiling: boolean;
+  fixes?: any[] | null;
+  onApplyFix?: (fix: any) => void;
 }
 
-function OutputPanel({ result, error, isCompiling }: OutputPanelProps) {
+function OutputPanel({ result, error, isCompiling, fixes, onApplyFix }: OutputPanelProps) {
   if (isCompiling) {
     return (
       <div className="bg-white rounded-lg border border-blue-200 shadow-sm p-8 h-[500px] flex items-center justify-center">
@@ -46,7 +48,7 @@ function OutputPanel({ result, error, isCompiling }: OutputPanelProps) {
             <h3 className="font-semibold text-red-900 mb-1">Connection Error</h3>
             <p className="text-sm text-red-700">{error}</p>
             <p className="text-xs text-red-600 mt-2">
-              Make sure your backend server is running on http://localhost:8000
+              Make sure your backend server is running and set the environment variable <code>VITE_BACKEND_URL</code> to its base URL (e.g. http://localhost:8000)
             </p>
           </div>
         </div>
@@ -140,6 +142,29 @@ function OutputPanel({ result, error, isCompiling }: OutputPanelProps) {
                 </div>
               ))}
             </div>
+            {fixes && fixes.length > 0 && (
+              <div className="mt-4">
+                <h4 className="font-semibold text-gray-900 mb-2">Suggested Fixes</h4>
+                <div className="space-y-2">
+                  {fixes.map((fix, i) => (
+                    <div key={i} className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-yellow-900">{fix.description}</div>
+                        <div className="text-xs text-gray-700 mt-1">Confidence: {(fix.confidence*100).toFixed(0)}%</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => onApplyFix && onApplyFix(fix)}
+                          className="px-3 py-1 bg-yellow-600 text-white rounded-md text-sm"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
