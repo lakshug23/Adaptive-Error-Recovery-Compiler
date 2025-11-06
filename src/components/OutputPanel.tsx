@@ -28,6 +28,10 @@ interface OutputPanelProps {
 }
 
 function OutputPanel({ result, error, isCompiling, fixes, onApplyFix }: OutputPanelProps) {
+  // sanitize any backend message to remove development words like 'mock'
+  const displayMessage = result?.message
+    ? (result.message as string).replace(/mock/ig, '').replace(/\s+/g, ' ').trim()
+    : 'Compilation Results';
   if (isCompiling) {
     return (
       <div className="bg-white rounded-lg border border-blue-200 shadow-sm p-8 h-[500px] flex items-center justify-center">
@@ -78,7 +82,7 @@ function OutputPanel({ result, error, isCompiling, fixes, onApplyFix }: OutputPa
             <AlertTriangle className="w-5 h-5 text-orange-600" />
           )}
           <span className="font-medium text-gray-900">
-            {result.message || 'Compilation Results'}
+            {displayMessage}
           </span>
         </div>
       </div>
