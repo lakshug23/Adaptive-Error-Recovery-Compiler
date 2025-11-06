@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
   "dev": "vite",
+  "backend": "python3 backend/server.py",
   "mock": "node mock-server.cjs",
     "build": "vite build",
     "lint": "eslint .",

@@ -30,6 +30,18 @@ To run the mock backend included in this repo:
 npm run mock
 ```
 
+To run the new real backend (requires `clang` installed and Python 3.8+):
+
+```bash
+# create and activate a virtualenv (recommended)
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+python backend/server.py
+```
+
+The real backend exposes the same `/compile` and `/fix` endpoints but uses `clang` to produce diagnostics and more accurate suggestions. The mock backend remains available for testing if clang is not installed.
+
 4. Start the frontend dev server
 
 ```bash
