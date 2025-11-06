@@ -26,10 +26,19 @@ class CodePayload(BaseModel):
 
 # Helper to set resource limits for child process
 def _limit_resources():
-    # 2 seconds CPU time
-    resource.setrlimit(resource.RLIMIT_CPU, (2, 2))
-    # 200 MB address space
-    resource.setrlimit(resource.RLIMIT_AS, (200 * 1024 * 1024, 200 * 1024 * 1024))
+    try:
+        # 2 seconds CPU time
+        resource.setrlimit(resource.RLIMIT_CPU, (2, 2))
+    except Exception:
+        # not all platforms support setting RLIMIT_CPU from Python or the OS may restrict it
+        pass
+    try:
+        # 200 MB address space (may not be supported on macOS)
+        if hasattr(resource, 'RLIMIT_AS'):
+            resource.setrlimit(resource.RLIMIT_AS, (200 * 1024 * 1024, 200 * 1024 * 1024))
+    except Exception:
+        # ignore failures to set address-space limits (platform dependent)
+        pass
 
 # Try to run clang/clang++ for diagnostics
 def run_clang_diagnostics(source_path: str) -> Dict[str, Any]:
@@ -218,4 +227,6 @@ if __name__ == '__main__':
     # Run uvicorn if executed directly
     import uvicorn
     port = int(os.environ.get('BACKEND_PORT', '8000'))
-    uvicorn.run('backend.server:app', host='127.0.0.1', port=port, reload=False)
+    # When run as a script the package name 'backend' may not be importable;
+    # pass the app object directly to uvicorn to avoid ModuleNotFoundError.
+    uvicorn.run(app, host='127.0.0.1', port=port, reload=False)
