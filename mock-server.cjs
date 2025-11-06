@@ -1,4 +1,4 @@
-// Simple mock backend server for POST /compile
+// Simple backend server for POST /compile (development/testing only)
 // Uses only Node built-in modules so no extra dependencies are required.
 
 const http = require('http');
@@ -36,7 +36,7 @@ const server = http.createServer((req, res) => {
         const payload = JSON.parse(body || '{}');
         const code = payload.code || '';
 
-  // Very small mock logic: simple heuristics to simulate compilation errors
+  // Very small logic: simple heuristics to simulate compilation errors
   const errors = [];
   const lines = code.split(/\r?\n/);
         // detect use of printf without stdio include
@@ -73,7 +73,7 @@ const server = http.createServer((req, res) => {
         if (errors.length === 0) {
           sendJSON(res, 200, {
             status: 'success',
-            message: 'Mock compilation succeeded',
+            message: 'Compilation succeeded',
             tokens: [
               { type: 'keyword', value: 'int', line: 1 },
               { type: 'identifier', value: 'main', line: 1 },
@@ -86,7 +86,7 @@ const server = http.createServer((req, res) => {
           const fixes = generateFixes(code, errors);
           sendJSON(res, 200, {
             status: 'error',
-            message: 'Mock compilation failed',
+            message: 'Compilation failed',
             tokens: [],
             errors: errors,
             fixes: fixes,
@@ -149,7 +149,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Mock backend server listening on http://localhost:${PORT}`);
+  console.log(`Backend server listening on http://localhost:${PORT}`);
 });
 
 // helper: generate minimal fixes according to user's strict rules
